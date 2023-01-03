@@ -8,28 +8,28 @@
 # MAGIC + Batch scoring - query via UDF  
 # MAGIC + Serve out of MLflow directly for real-time scoring
 # MAGIC + Deploy to GCP Vertex AI, access via the Vertex.ai endpoint
+# MAGIC + Write results out to GCP BigTable.
 # MAGIC 
 # MAGIC Demonstrate MLflow benefits integrated with Databricks and Delta Lake
-# MAGIC + ML development environment integrated with data-platform
-# MAGIC + Track ML experiments
-# MAGIC + Programaticaly choose best experiment and deploy to the Model Registry
-# MAGIC + Manage lifecycle of model versions and deployment lifecycle (Staging -> Prod) 
+# MAGIC + ML development environment integrated with the data-platform
+# MAGIC + Track ML experiments for collaboration, explainability and governance
+# MAGIC + Programaticaly choose the best experiment and deploy to the Model Registry
+# MAGIC + Manage lifecycle of model versions and deployment lifecycle (Dev -> Staging -> Prod) 
 # MAGIC + Governance and Explainability of models stored with artifacts mapped to deployment-versions
 # MAGIC 
 # MAGIC This Demo is split into two parts with two separate notebooks:
 # MAGIC 1. **Build**: Train, Validate and Deploy (this notebook)  
 # MAGIC   a) load a data-set and train a model  
-# MAGIC   b) demonstrate multiple training runs tracked in MLflow.  
+# MAGIC   b) demonstrate multiple training runs tracked in MLflow ("experiments").  
 # MAGIC   c) store artefacts with each model version for explainablility and governance.     
 # MAGIC 2. **Run**: Test using the model via different interfaces (notebook 2)  
 # MAGIC   a) Batch-score results via Databricks SQL with UDF  
-# MAGIC   b) Batch Score and write results to GCP Hbase  
+# MAGIC   b) Batch Score and write results to GCP Hbase (BigTable)  
 # MAGIC   c) Access via Vertex AI (GCP) endpoint. 
 # MAGIC 
 # MAGIC The model is built as a Scikit-learn Random Forest model, managed in the MLflow framework and deployed into Vertex.AI for serving.
 # MAGIC 
-# MAGIC 
-# MAGIC Service Account setup
+# MAGIC Service Account setup:
 # MAGIC 
 # MAGIC + Privileges for Vertex: `Storage Admin`, `Vertex AI Administrator`   
 # MAGIC + Privileges for HBASE: `BigTable User`  
@@ -61,7 +61,12 @@
 # MAGIC The dataset contains transactions made by credit cards in September 2013 by European cardholders.
 # MAGIC This dataset presents transactions that occurred in two days, where we have 492 frauds out of 284,807 transactions. The dataset is highly unbalanced, the positive class (frauds) account for 0.172% of all transactions.
 # MAGIC 
-# MAGIC It contains only numerical input variables which are the result of a PCA transformation. Unfortunately, due to confidentiality issues, we cannot provide the original features and more background information about the data. Features V1, V2, … V28 are the principal components obtained with PCA, the only features which have not been transformed with PCA are 'Time' and 'Amount'. Feature 'Time' contains the seconds elapsed between each transaction and the first transaction in the dataset. The feature 'Amount' is the transaction Amount, this feature can be used for example-dependant cost-sensitive learning. Feature 'Class' is the response variable and it takes value 1 in case of fraud and 0 otherwise.
+# MAGIC It contains only numerical input variables which are the result of a PCA transformation. Unfortunately, due to confidentiality issues, we cannot provide the original features and more background information about the data. 
+# MAGIC + Features **V1, V2, … V28** are the principal components obtained with PCA
+# MAGIC + the only features which have not been transformed with PCA are 'Time' and 'Amount'.  
+# MAGIC + Feature 'Time' contains the seconds elapsed between each transaction and the first transaction in the dataset. 
+# MAGIC + The feature 'Amount' is the transaction Amount, this feature can be used for example-dependant cost-sensitive learning. 
+# MAGIC + Feature **'Class'** is the response variable and it takes value 1 in case of fraud and 0 otherwise.
 
 # COMMAND ----------
 
@@ -102,7 +107,7 @@ df.printSchema()
 from pyspark.ml.functions import vector_to_array
 from pyspark.sql.functions import col
 
-# extract the vector of PCA features into individual columns in a Pandas data-frame
+# extract the vector of PCA features into individual columns in a Pandas data-frame - not always necessary to do this, just doing for simple demo
 pandas_df = (df.withColumn("pca", vector_to_array("pcaVector"))).select(["time", "amountRange", "label"] + [col("pca")[i] for i in range(28)]).toPandas()
 
 # COMMAND ----------
@@ -125,6 +130,7 @@ pandas_df.value_counts(subset=['label'])
 # DBTITLE 1,Visualise Data
 import seaborn as sns
 import pandas as pd
+import matplotlib.pyplot as plt
 
 #take a sample to speed things up - only 100 rows, just 10 cols of features
 sample_mixed_df = pandas_df.sample(100).iloc[:,2:13]
@@ -158,7 +164,8 @@ y = pandas_df.iloc[:,2]
 
 # COMMAND ----------
 
-print("Distinct label values:", y.unique())
+print("Distinct y-label values:", y.unique())
+print("\nSample of X values:\n", X.iloc[:1,0:7])
 
 # COMMAND ----------
 
@@ -215,7 +222,7 @@ y_train.head()
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 # Set the hyperparameters for the model - i.e. estimators is the number of trees to use. More trees = more training time
-model_rf = RandomForestClassifier(n_estimators=5, max_depth=10, random_state=42)
+model_rf = RandomForestClassifier(n_estimators=5, max_depth=10, random_state=42, n_jobs=16)
 # Train the model on training data
 model_rf.fit(X_train, y_train);
 
@@ -270,7 +277,9 @@ plt.show()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Assess Performance of Model
+# MAGIC ## Assess the Performance of the Model
+# MAGIC Use the Test data-set to generate preditions.  
+# MAGIC Compare the model output with the actual `y_test` values that were split off from the `X_test` data-set
 
 # COMMAND ----------
 
@@ -286,10 +295,10 @@ f1 = f1_score(y_test, y_pred)
 
 # COMMAND ----------
 
-print("Accuracy", acc)
-print("Precision", prec)
-print("Recall", rec)
-print("F1 score", f1)
+print("Accuracy", round(acc,5))
+print("Precision", round(prec,5))
+print("Recall", round(rec,5))
+print("F1 score", round(f1,5))
 
 # COMMAND ----------
 
@@ -299,7 +308,7 @@ print("F1 score", f1)
 # MAGIC *Precision* (also called positive predictive value) is the fraction of relevant instances among the retrieved instances, while *recall* (also known as sensitivity) is the fraction of relevant instances that were retrieved. Both precision and recall are therefore based on relevance.
 # MAGIC   
 # MAGIC + Low Recall score - due to many missed Frauds  
-# MAGIC + High Precision - few false positives (97% of the detected Frauds were Frauds)
+# MAGIC + High Precision - few false positives 
 # MAGIC 
 # MAGIC 
 # MAGIC <img src="https://drive.google.com/uc?export=view&id=1-6Pbged7EQlCQsSzmyKYw8ApN97kcNg1" alt="drawing" width="400"/>
@@ -329,9 +338,9 @@ plt.show()
 # MAGIC %md
 # MAGIC ## Train a Model - MLFlow
 # MAGIC 
-# MAGIC + Experiments - track all our machine-learning development runs and associated artefects
-# MAGIC + Feature-Store - manage the data we use to train the model; retain this for model reproducibility and team collaboration
-# MAGIC + Models - stored in the Databricks environment with namespace mapped to release cycle deployment
+# MAGIC + *Experiments* - track all our machine-learning development runs and associated artefects
+# MAGIC + *Feature-Store* - manage the data we use to train the model; retain this for model reproducibility and team collaboration
+# MAGIC + *Models* - stored in the Databricks environment with namespace mapped to release cycle deployment
 
 # COMMAND ----------
 

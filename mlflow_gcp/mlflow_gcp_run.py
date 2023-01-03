@@ -254,6 +254,8 @@ display(cc_pyspark_flat.head(5))
 # COMMAND ----------
 
 import mlflow
+import warnings
+warnings.filterwarnings('ignore')
 
 # create a user-defined function that maps to MLflow model
 fraud_detect_udf = mlflow.pyfunc.spark_udf(spark, "models:/cc_fraud/Production")
@@ -298,10 +300,6 @@ cc_pyspark_flat.createOrReplaceTempView("cc_flat_temp")
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 # DBTITLE 1,Get the Predictions and Join them back to the Original Dataset
 results_df = spark.sql("""
 SELECT time, cc_fraud_model(
@@ -314,6 +312,11 @@ FROM cc_flat_temp
 """)
 
 cc_pyspark_flat = cc_pyspark_flat.join(results_df, how="inner", on="time")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM cc_flat_temp LIMIT 5;
 
 # COMMAND ----------
 
@@ -367,56 +370,7 @@ table = instance.table("cc_fraud_bigtable")
 
 # COMMAND ----------
 
-
-   
-
-# COMMAND ----------
-
-# DBTITLE 1,Batch-Write to HBASE
-#Maximum number of mutations is 100000
-
-import datetime
-timestamp = datetime.datetime.utcnow()
-column_family_1 = "features"
-column_family_2 = "predict"
-
-cc_pandas_flat = cc_pyspark_flat.toPandas()
-#cc_pandas_flat.memory_usage(index=True, deep=True).sum()/1024/1024
-feature_cols=list(cc_pandas_flat.columns)[1:][:-1]
-
-
-# break this up into sets of 1000
-#cc_pandas_flat_section = cc_pandas_flat.head(1000)
-
-row_ids = list(cc_pandas_flat['time'])
-#list of lists - features
-feature_vals = cc_pandas_flat[feature_cols].to_numpy().tolist()
-#list  - predictions
-predict_vals = cc_pandas_flat["prediction"].astype(int)
-
-# break this up into sets of batch-size
-batch_size = 1000
-counter = 0
-
-# Create some HBASE row-ids from the list of row ids
-hbase_row_ids = [ table.direct_row(f"{r}") for r in row_ids ]
-
-for i,row in enumerate(hbase_row_ids):
-    # for each hbase row id, write a set of feature-value pairs and a timestamp
-    #hbase_row_ids[i].set_cell(column_family_1, "feature", 1, timestamp)
-    for j,f in enumerate(feature_cols):
-        # issue with storing float values??? store a strings
-        hbase_row_ids[i].set_cell(column_family_1, f, f"{feature_vals[i][j]}", timestamp)
-        
-
-    
-    
-response = table.mutate_rows(hbase_row_ids)
-        
-
-# COMMAND ----------
-
-# DBTITLE 1,Version 3 - this takes 4 minutes if we write the features out, 20 seconds if we write the predictions
+# DBTITLE 1,Batch-Write to HBASE- this takes 4 minutes if we write the features out, 20 seconds if we write the predictions
 #Maximum number of mutations is 100000
 
 import datetime
@@ -459,10 +413,9 @@ for i, r in enumerate(row_ids):
     hbase_row_ids[counter].set_cell(column_family_2, "prediction", f"{predict_vals[i]}", timestamp)              
                             
     # for each hbase row id, write a set of feature-value pairs and a timestamp
-    #hbase_row_ids[i].set_cell(column_family_1, "feature", 1, timestamp)
-    #for j,f in enumerate(feature_cols):
-    #    # issue with storing float values??? store a strings
-    #    hbase_row_ids[counter].set_cell(column_family_1, f, f"{feature_vals[i][j]}", timestamp)  
+    for j,f in enumerate(feature_cols):
+        # issue with storing float values??? store a strings
+        hbase_row_ids[counter].set_cell(column_family_1, f, f"{feature_vals[i][j]}", timestamp)  
         
     if counter >= batch_size:
         response = table.mutate_rows(hbase_row_ids)
