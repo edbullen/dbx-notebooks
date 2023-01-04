@@ -398,7 +398,7 @@ feature_vals = cc_pandas_flat[feature_cols_pandas].to_numpy().tolist()
 predict_vals = cc_pandas_flat["prediction"].astype(int)
 
 # break this up into sets of batch-size
-batch_size = 10000
+batch_size = 1000
 counter = 0
 
 hbase_row_ids = []
