@@ -2,24 +2,33 @@
 # MAGIC %md
 # MAGIC # End to End train and deploy ML Model with MLFlow and Vertex AI
 # MAGIC 
-# MAGIC Use a publicly available retail banking data-set to train a *Credit Card Fraud Detection* model.  
+# MAGIC Demonstration using a publicly available retail banking data-set to train a *Credit Card Fraud Detection* model.  
 # MAGIC 
-# MAGIC Make the model available for multiple access paths via MLflow and Vertex
-# MAGIC + Batch scoring - query via UDF  
-# MAGIC + Serve out of MLflow directly for real-time scoring
-# MAGIC + Deploy to GCP Vertex AI, access via the Vertex.ai endpoint
+# MAGIC Make the model available for multiple access paths via Pyspark, SQL and MLflow and integrate with GCP:
+# MAGIC + Batch scoring - query in SQL via a Spark UDF  
+# MAGIC + Serve out of the MLflow Rest API directly for real-time scoring
 # MAGIC + Write results out to GCP BigTable.
+# MAGIC + Deploy to GCP Vertex AI, access via the Vertex.ai endpoint
 # MAGIC 
 # MAGIC Demonstrate MLflow benefits integrated with Databricks and Delta Lake
-# MAGIC + ML development environment integrated with the data-platform
-# MAGIC + Track ML experiments for collaboration, explainability and governance
+# MAGIC + ML development environment integrated with the data-platform (ease of use and simplicity)
+# MAGIC + Track ML experiments for collaboration (explainability and governance)
 # MAGIC + Programaticaly choose the best experiment and deploy to the Model Registry
 # MAGIC + Manage lifecycle of model versions and deployment lifecycle (Dev -> Staging -> Prod) 
 # MAGIC + Governance and Explainability of models stored with artifacts mapped to deployment-versions
 # MAGIC 
+# MAGIC ## ML-Ops
+# MAGIC .  
+# MAGIC    
+# MAGIC    
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1snUQ1VE0pV5rxlbjpH1257hYCAwdqZVU" alt="drawing" width="600"/>
+# MAGIC 
+# MAGIC ## Demo Structure
+# MAGIC 
 # MAGIC This Demo is split into two parts with two separate notebooks:
 # MAGIC 1. **Build**: Train, Validate and Deploy (this notebook)  
-# MAGIC   a) load a data-set and train a model  
+# MAGIC   a) load a data-set and train a model, including a basic ML 101 introduction  
 # MAGIC   b) demonstrate multiple training runs tracked in MLflow ("experiments").  
 # MAGIC   c) store artefacts with each model version for explainablility and governance.     
 # MAGIC 2. **Run**: Test using the model via different interfaces (notebook 2)  
@@ -27,7 +36,7 @@
 # MAGIC   b) Batch Score and write results to GCP Hbase (BigTable)  
 # MAGIC   c) Access via Vertex AI (GCP) endpoint. 
 # MAGIC 
-# MAGIC The model is built as a Scikit-learn Random Forest model, managed in the MLflow framework and deployed into Vertex.AI for serving.
+# MAGIC The model is built as a Scikit-learn Random Forest model, managed in the MLflow framework and deployed in Databricks for using directly against the data-lake as well as into Vertex.AI for serving.
 # MAGIC 
 # MAGIC Service Account setup:
 # MAGIC 
@@ -65,7 +74,7 @@
 # MAGIC + Features **V1, V2, … V28** are the principal components obtained with PCA
 # MAGIC + the only features which have not been transformed with PCA are 'Time' and 'Amount'.  
 # MAGIC + Feature 'Time' contains the seconds elapsed between each transaction and the first transaction in the dataset. 
-# MAGIC + The feature 'Amount' is the transaction Amount, this feature can be used for example-dependant cost-sensitive learning. 
+# MAGIC + The feature 'Amount' is the transaction amount. 
 # MAGIC + Feature **'Class'** is the response variable and it takes value 1 in case of fraud and 0 otherwise.
 
 # COMMAND ----------
@@ -199,11 +208,30 @@ y_train.head()
 # MAGIC %md
 # MAGIC ## Train a Model - Vanilla
 # MAGIC 
-# MAGIC Use a **Random Forest** algorithm to predict Fraud (label=1) vs Not-Fraud (label=0) based on the training data-set.
+# MAGIC ### Basic Concepts in Machine Learning
 # MAGIC 
+# MAGIC In general we either train a model based on past known events - this is known as **Supervised Learning**.  Supervised Learning can fall into categories of either 
+# MAGIC + *Classification* (is this a picture of a cat or a dog, is this a fraud or not a fraud)  
+# MAGIC + *Regression* (how much will this stock be worth in the future, what is the predicited weather temperature range)
+# MAGIC 
+# MAGIC It is also possible to create machine learning algorithms that don't require training on previous known outcomes.  This is known as **Unsupervised Learning**.  Most supervised learning is achieved by various
+# MAGIC + *Clustering* algorithms (identify different related groups of data, which data-points can we consider anomolies)
+# MAGIC 
+# MAGIC #### Supervised Learning process
+# MAGIC Labeled data is needed to train a model to generate label predictions.  
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1--qOV9nfiesXB_EwQKdToLqIIRyCm8bQ" alt="drawing" width="400"/>
+# MAGIC 
+# MAGIC #### Unsupervised Learning process
+# MAGIC No training against pre-labeled data is needed.  
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7eB7cfmQwLAuHEJ9KhE9PIs3W31UmfW" alt="drawing" width="400"/>
+# MAGIC 
+# MAGIC ### Random Forest Classification Algorithm
+# MAGIC 
+# MAGIC This notebook demostrated using a **Random Forest** algorithm to predict Fraud (label=1) vs Not-Fraud (label=0) based on the training data-set.  Random Forest is a Supervised ML algorithm.  
 # MAGIC 
 # MAGIC <img src="https://drive.google.com/uc?export=view&id=1-9gDhtXQQXizghiQZz7K38lC3VVg0WUs" alt="drawing" width="400"/>
-# MAGIC 
 # MAGIC 
 # MAGIC Final result determined by majority vote or average.
 
@@ -247,6 +275,12 @@ plt.show()
 # MAGIC %md
 # MAGIC The left node is True and the right node is False.  
 # MAGIC The value line in each box is telling you how many samples at that node fall into each category, in order.
+# MAGIC 
+# MAGIC   
+# MAGIC Here is a zoomed in view of the top part of one of the trees:
+# MAGIC 
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-Qchz3_BDdwFldRoQX1Tj2CwvX70XK4u" alt="drawing" width="1200"/>
 
 # COMMAND ----------
 
@@ -476,6 +510,17 @@ model_registered = mlflow.register_model("runs:/"+best_model.run_id+"/cc_fraud",
 client = mlflow.tracking.MlflowClient()
 client.transition_model_version_stage("cc_fraud", model_registered.version, stage = "Production", archive_existing_versions=True)
 print("model version "+model_registered.version+" as been registered as production ready")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **Model Namespace**
+# MAGIC ```
+# MAGIC                       stage or version
+# MAGIC          model name     |
+# MAGIC             |           |
+# MAGIC "models:/cc_fraud/Production"
+# MAGIC ```
 
 # COMMAND ----------
 
