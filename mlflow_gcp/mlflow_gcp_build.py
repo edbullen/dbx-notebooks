@@ -539,9 +539,64 @@ print("model version "+model_registered.version+" as been registered as producti
 
 # MAGIC %md
 # MAGIC ## Deploy Model to MLflow Rest API
+# MAGIC The MLflow model serving API allows predictions to be "scored" via a secured API.  This makes the model easy to integrate with any code or software that can make a REST API call.
 # MAGIC .  
 # MAGIC 
 # MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7CsjhK0cFj96yErtCd2VWIJf0ypNHHJ" alt="drawing" width="1200"/>
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### MLFlow REST API Call Example
+# MAGIC 
+# MAGIC Use a Python IDE (Pycharm or Visual Studio) to call the REST API with some sample data.  
+# MAGIC   
+# MAGIC Payload is provided in this format: 
+# MAGIC ```
+# MAGIC {
+# MAGIC     "dataframe_records": [
+# MAGIC         {
+# MAGIC             "pca[0]": 1.226073,
+# MAGIC             "pca[1]": -1.640026,
+# MAGIC             ...
+# MAGIC             ...
+# MAGIC             "pca[27]": 0.012658,
+# MAGIC         }
+# MAGIC     ]
+# MAGIC }
+# MAGIC            
+# MAGIC ```
+# MAGIC Results are returned as a list of predictions:
+# MAGIC ```
+# MAGIC {'predictions': [0, 1, 0]}
+# MAGIC ```
+
+# COMMAND ----------
+
+# DBTITLE 1,Python Code Example
+# MAGIC %md
+# MAGIC ```
+# MAGIC def score_model(api_url, token, dataset):
+# MAGIC     headers = {'Authorization': f'Bearer {token}'}
+# MAGIC 
+# MAGIC     data_core = dataset.to_dict(orient='records')
+# MAGIC     data_json = {"dataframe_records": data_core}
+# MAGIC     
+# MAGIC     response = requests.request(method='POST', headers=headers, url=api_url, json=data_json)
+# MAGIC     if response.status_code != 200:
+# MAGIC         raise Exception(f'Request failed with status {response.status_code}, {response.text}')
+# MAGIC     return response.json()
+# MAGIC 
+# MAGIC ```
+# MAGIC 
+# MAGIC format the dataset to be scored in a Pandas Dataframe:
+# MAGIC 
+# MAGIC ```
+# MAGIC payload_df = pd.DataFrame([[1.226073, -1.640026, ... , 0.012658],
+# MAGIC                           ],
+# MAGIC                           columns=["pca[0]", "pca[1]", ... "pca[27]"])
+# MAGIC ```                          
+# MAGIC                               
 
 # COMMAND ----------
 
