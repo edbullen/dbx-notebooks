@@ -1,2 +1,4 @@
 .DS_Store
 .idea
+.python-version
+mlflow_gcp/utils/__pycache__/
