@@ -148,6 +148,7 @@ sample_fraud_df = pandas_df[pandas_df.label==1].sample(50).iloc[:,2:13]
 
 sample_df = pd.concat([sample_mixed_df, sample_fraud_df])
 
+sns.set(font_scale=2.0)
 sns.pairplot( sample_df
              , vars=sample_df.iloc[:,3:13]
              , hue="label")
@@ -162,6 +163,8 @@ sns.pairplot( sample_df
 # MAGIC + Split the data up into Features (`X`) and Labels (`y`)  
 # MAGIC + Randomly Split the Features and Labels into Training Data and Test Data for testing the models performance. 
 # MAGIC + Train the data on the training data-set and check the performance with the test set. 
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1Ed7UPfc8i9AE_uERKPcMT9015QkMe60q" alt="drawing" width="800"/>
 
 # COMMAND ----------
 
@@ -199,6 +202,10 @@ X_train.head()
 
 # COMMAND ----------
 
+X_train.columns
+
+# COMMAND ----------
+
 y_train.head()
 
 # COMMAND ----------
@@ -218,18 +225,18 @@ y_train.head()
 # MAGIC #### Supervised Learning process
 # MAGIC Labeled data is needed to train a model to generate label predictions.  
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1--qOV9nfiesXB_EwQKdToLqIIRyCm8bQ" alt="drawing" width="400"/>
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1--qOV9nfiesXB_EwQKdToLqIIRyCm8bQ" alt="drawing" width="600"/>
 # MAGIC 
 # MAGIC #### Unsupervised Learning process
 # MAGIC No training against pre-labeled data is needed.  
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7eB7cfmQwLAuHEJ9KhE9PIs3W31UmfW" alt="drawing" width="400"/>
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7eB7cfmQwLAuHEJ9KhE9PIs3W31UmfW" alt="drawing" width="600"/>
 # MAGIC 
 # MAGIC ### Random Forest Classification Algorithm
 # MAGIC 
 # MAGIC This notebook demostrated using a **Random Forest** algorithm to predict Fraud (label=1) vs Not-Fraud (label=0) based on the training data-set.  Random Forest is a Supervised ML algorithm.  
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-9gDhtXQQXizghiQZz7K38lC3VVg0WUs" alt="drawing" width="400"/>
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-9gDhtXQQXizghiQZz7K38lC3VVg0WUs" alt="drawing" width="600"/>
 # MAGIC 
 # MAGIC Final result determined by majority vote or average.
 
@@ -272,7 +279,7 @@ plt.show()
 
 # MAGIC %md
 # MAGIC The left node is True and the right node is False.  
-# MAGIC The value line in each box is telling you how many samples at that node fall into each category, in order.
+# MAGIC The value line in each box is telling you how many items at that node fall into each category, in order.
 # MAGIC 
 # MAGIC   
 # MAGIC Here is a zoomed in view of the top part of one of the trees:
@@ -532,6 +539,9 @@ print("model version "+model_registered.version+" as been registered as producti
 
 # MAGIC %md
 # MAGIC ## Deploy Model to MLflow Rest API
+# MAGIC .  
+# MAGIC 
+# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7CsjhK0cFj96yErtCd2VWIJf0ypNHHJ" alt="drawing" width="1200"/>
 
 # COMMAND ----------
 
