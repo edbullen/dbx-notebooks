@@ -575,6 +575,15 @@ print("model version "+model_registered.version+" as been registered as producti
 
 # DBTITLE 1,Python Code Example
 # MAGIC %md
+# MAGIC Format the dataset to be scored in a Pandas Dataframe:
+# MAGIC 
+# MAGIC ```
+# MAGIC payload_df = pd.DataFrame([[1.226073, -1.640026, ... , 0.012658],
+# MAGIC                           ],
+# MAGIC                           columns=["pca[0]", "pca[1]", ... "pca[27]"])
+# MAGIC ```                          
+# MAGIC 
+# MAGIC Create a `score_model()` function and call it providing the MLflow URL, access-token and data to process:
 # MAGIC ```
 # MAGIC def score_model(api_url, token, dataset):
 # MAGIC     headers = {'Authorization': f'Bearer {token}'}
@@ -589,13 +598,7 @@ print("model version "+model_registered.version+" as been registered as producti
 # MAGIC 
 # MAGIC ```
 # MAGIC 
-# MAGIC format the dataset to be scored in a Pandas Dataframe:
 # MAGIC 
-# MAGIC ```
-# MAGIC payload_df = pd.DataFrame([[1.226073, -1.640026, ... , 0.012658],
-# MAGIC                           ],
-# MAGIC                           columns=["pca[0]", "pca[1]", ... "pca[27]"])
-# MAGIC ```                          
 # MAGIC                               
 
 # COMMAND ----------
