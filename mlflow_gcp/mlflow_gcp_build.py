@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # End to End train and deploy ML Model with MLFlow and Vertex AI
+# MAGIC # End to End train and deploy ML Model with MLFlow Databricks and GCP
 # MAGIC 
 # MAGIC Demonstration using a publicly available retail banking data-set to train a *Credit Card Fraud Detection* model.  
 # MAGIC 

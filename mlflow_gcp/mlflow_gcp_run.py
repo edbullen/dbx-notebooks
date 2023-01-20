@@ -10,6 +10,7 @@
 # MAGIC 
 # MAGIC Other options not demonstrated:
 # MAGIC + Streaming data in from Kafka / Pub-Sub, getting predictions, writing out to a Delta database table or a Kafka / Pub-Sub queue
+# MAGIC + Direct query of BigQuery for batch-scoring in Databricks
 # MAGIC + Writing results out in CSV form to a cloud storage bucket
 # MAGIC + Deploying MLflow model artefacts to separate containers  
 # MAGIC .  
