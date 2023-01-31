@@ -3,17 +3,10 @@
 # MAGIC # Predictions using ML Models managed by MLflow
 # MAGIC Example scenarios demonstrated
 # MAGIC 1. Get predictions using the MLflow Rest API (demonstrated in the previous "build" notebook)
-# MAGIC 2. Python code generates predictions against a data-frame held in memory 
-# MAGIC 3. Apply a model against a database table using SQL - "batch scoring"
-# MAGIC 4. Save results to GCP bigtable
-# MAGIC 5. Overview of using Vertex AI endpoint and Python API example
+# MAGIC 2. Apply an ML model in Databricks against data queried from BigQuery using SQL - "batch scoring"
+# MAGIC 3. Save results to GCP BigTable (HBase equivalent data-store)
 # MAGIC 
-# MAGIC Other options not demonstrated:
-# MAGIC + Streaming data in from Kafka / Pub-Sub, getting predictions, writing out to a Delta database table or a Kafka / Pub-Sub queue
-# MAGIC + Direct query of BigQuery for batch-scoring in Databricks
-# MAGIC + Writing results out in CSV form to a cloud storage bucket
-# MAGIC + Deploying MLflow model artefacts to separate containers  
-# MAGIC .  
+# MAGIC *Many other options and approaches are possible*
 # MAGIC 
 # MAGIC <img src="https://drive.google.com/uc?export=view&id=1gdajj0xkl5Y2-fKaIyVOfthbKYZwyf7O" alt="drawing" width="600"/>
 
@@ -47,44 +40,12 @@
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## 2. Python data-frame predictions
-
-# COMMAND ----------
-
-# DBTITLE 1,Create data-frame X_test_small of test data to score
-import pandas as pd
-from utils.sample_data import cc_fraud_dict  # helper function to generate some data for getting predictions for
-
-# get a Python dictionary of data
-data_dict = cc_fraud_dict()
-# convert it to a Pandas data-frame
-X_test_small = pd.DataFrame(data_dict)
-
-# COMMAND ----------
-
-display(X_test_small)
-
-# COMMAND ----------
-
-#logged_model = 'runs:/c99bd96b0f4e4bfcbbcf958cd9bc4477/cc_fraud'
-logged_model = 'models:/cc_fraud/Production'
-
-# Load model as a PyFuncModel.
-loaded_model = mlflow.pyfunc.load_model(logged_model)
-
-# Predict on a Pandas DataFrame.
-import pandas as pd
-loaded_model.predict(X_test_small)
-
-# COMMAND ----------
-
 
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ## 3. SQL Batch Score with Python UDF
+# MAGIC ## 2. SQL Batch Score with Python UDF
 
 # COMMAND ----------
 
@@ -98,19 +59,31 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 
 # COMMAND ----------
 
-# DBTITLE 1,Test data to demonstrate generating predictions - cc_fraud_test
-# MAGIC %sql 
-# MAGIC SELECT * FROM cc_fraud_test LIMIT 5;
+# DBTITLE 1,Table Staged in BigQuery
+# table ref is project.dataset.table
+table = "fe-dev-sandbox.hsbc.cc_fraud_bq"
 
 # COMMAND ----------
 
-# DBTITLE 1,Validations data to check the generated predictions - cc_fraud_valid
+# DBTITLE 1,Data Stored in BigQuery for running predictions against
+# load a sample of BigQuery Data
+df_bq = spark.read.format("bigquery").option("table",table).load()
+df_bq = df_bq.where(df_bq.id <= 5)
+#df_bq.createOrReplaceTempView("bq_fraud")
+
+# COMMAND ----------
+
+display(df_bq.take(5))
+
+# COMMAND ----------
+
+# DBTITLE 1,Validation data to check the generated predictions - cc_fraud_valid
 # MAGIC %sql
 # MAGIC SELECT * FROM cc_fraud_valid LIMIT 5;
 
 # COMMAND ----------
 
-# DBTITLE 1,Use the cc_fraud function to extract predictions from data stored in a SQL table
+# DBTITLE 1,Example - Use the cc_fraud_model UDF to get predictions from data in a Databricks table
 # MAGIC %sql 
 # MAGIC SELECT `id`, `time`, `amountRange`, cc_fraud_model(
 # MAGIC        `pca[0]`, `pca[1]`, `pca[2]`, `pca[3]`, `pca[4]`, `pca[5]`,
@@ -123,20 +96,43 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 
 # COMMAND ----------
 
-# DBTITLE 1,Create a Temp View of Predictions
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TEMPORARY VIEW cc_fraud_predictions
-# MAGIC AS SELECT `id`, `time`, `amountRange`, cc_fraud_model(
-# MAGIC        `pca[0]`, `pca[1]`, `pca[2]`, `pca[3]`, `pca[4]`, `pca[5]`,
-# MAGIC        `pca[6]`, `pca[7]`, `pca[8]`, `pca[9]`, `pca[10]`, `pca[11]`, `pca[12]`,
-# MAGIC        `pca[13]`, `pca[14]`, `pca[15]`, `pca[16]`, `pca[17]`, `pca[18]`,
-# MAGIC        `pca[19]`, `pca[20]`, `pca[21]`, `pca[22]`, `pca[23]`, `pca[24]`,
-# MAGIC        `pca[25]`, `pca[26]`, `pca[27]`) as prediction
-# MAGIC FROM cc_fraud_test;
+# DBTITLE 1,Extract a set of IDs from BigQuery to run Predictions on
+# load a sample of BigQuery Data
+df_bq = spark.read.format("bigquery").option("table",table).load()
+df_bq = df_bq.where(df_bq.id <= 50000)
+# create a view that we can query in SQL
+df_bq.createOrReplaceTempView("bq_fraud")
 
 # COMMAND ----------
 
-# DBTITLE 1,Query the Validation table, with real fraud labels
+# DBTITLE 1,Get Some Fraud Predictions
+# MAGIC %sql 
+# MAGIC SELECT `id`, `time`, `amountRange`, cc_fraud_model(
+# MAGIC        `pca_0_`, `pca_1_`, `pca_2_`, `pca_3_`, `pca_4_`, `pca_5_`,
+# MAGIC        `pca_6_`, `pca_7_`, `pca_8_`, `pca_9_`, `pca_10_`, `pca_11_`, `pca_12_`,
+# MAGIC        `pca_13_`, `pca_14_`, `pca_15_`, `pca_16_`, `pca_17_`, `pca_18_`,
+# MAGIC        `pca_19_`, `pca_20_`, `pca_21_`, `pca_22_`, `pca_23_`, `pca_24_`,
+# MAGIC        `pca_25_`, `pca_26_`, `pca_27_`) as prediction
+# MAGIC FROM bq_fraud
+# MAGIC LIMIT 10;
+
+# COMMAND ----------
+
+# DBTITLE 1,Create a Temp SQL View of Predictions
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW cc_fraud_predictions
+# MAGIC AS
+# MAGIC SELECT `id`, `time`, `amountRange`, cc_fraud_model(
+# MAGIC        `pca_0_`, `pca_1_`, `pca_2_`, `pca_3_`, `pca_4_`, `pca_5_`,
+# MAGIC        `pca_6_`, `pca_7_`, `pca_8_`, `pca_9_`, `pca_10_`, `pca_11_`, `pca_12_`,
+# MAGIC        `pca_13_`, `pca_14_`, `pca_15_`, `pca_16_`, `pca_17_`, `pca_18_`,
+# MAGIC        `pca_19_`, `pca_20_`, `pca_21_`, `pca_22_`, `pca_23_`, `pca_24_`,
+# MAGIC        `pca_25_`, `pca_26_`, `pca_27_`) as prediction
+# MAGIC FROM bq_fraud;
+
+# COMMAND ----------
+
+# DBTITLE 1,Sample Query of the Validation table, with "true" fraud labels
 # MAGIC %sql
 # MAGIC SELECT `id`, `time`, `amountRange`, `label` 
 # MAGIC FROM cc_fraud_valid
@@ -144,12 +140,21 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 
 # COMMAND ----------
 
-# DBTITLE 1,Join the Predictions with the Validation data and check the accuracy
+# DBTITLE 1,Join the Predictions made against the BQ data with the Validation data and check the accuracy
 # MAGIC %sql
 # MAGIC SELECT p.id, p.prediction, p.time, p.amountRange, v.label
 # MAGIC FROM cc_fraud_predictions p
 # MAGIC JOIN cc_fraud_valid v ON p.id = v.id
 # MAGIC WHERE prediction != v.label;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT count(p.id) as False_Postive_Count
+# MAGIC FROM cc_fraud_predictions p
+# MAGIC JOIN cc_fraud_valid v ON p.id = v.id
+# MAGIC WHERE prediction != v.label
+# MAGIC AND prediction == 1;
 
 # COMMAND ----------
 
@@ -329,96 +334,4 @@ print(f"total records written {i}")
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## 5. Vertex AI 
-# MAGIC There is a 1.5 MB limit on the API
-# MAGIC 
-# MAGIC This part needs cluster version 10.4 - got a protobuf error for 11.4
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Vertex in Databricks via the plugin from the notebook - batch inference
-# MAGIC 
-# MAGIC Pass in a Pandas data-frame with features to produce a prediction ("score") for.
-
-# COMMAND ----------
-
-X_test_small.iloc[:,1:]
-
-# COMMAND ----------
-
-import mlflow
-from mlflow import deployments
-from mlflow.deployments import get_deploy_client
-
-# create a Vertex AI client
-vtx_client = mlflow.deployments.get_deploy_client("google_cloud")
-
-# Use the .predict() method from the same plugin
-deployment_name = "mlflow_vertex_ccfraud"
-# strip off the id column ans pass in the features (column 1..n)
-predictions = vtx_client.predict(deployment_name,X_test_small.iloc[:,1:])
-
-# COMMAND ----------
-
 predictions
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Vertex AI Python interface
-# MAGIC 
-# MAGIC 
-# MAGIC 1. Follow the setup instructions in the [Python Client for Cloud AI Platform quick start](https://googleapis.dev/python/aiplatform/latest/index.html) 
-# MAGIC 
-# MAGIC 
-# MAGIC 2. Copy and paste the sample code on Github into a new Python file: [https://github.com/googleapis/python-aiplatform/blob/main/samples/snippets/prediction_service/predict_custom_trained_model_sample.py](https://github.com/googleapis/python-aiplatform/blob/main/samples/snippets/prediction_service/predict_custom_trained_model_sample.py)
-# MAGIC 
-# MAGIC 
-# MAGIC 3. Execute your request in Python.
-# MAGIC ```
-# MAGIC predict_custom_trained_model_sample(
-# MAGIC     project="697856052963",
-# MAGIC     endpoint_id="6798082482446008320",
-# MAGIC     location="us-central1",
-# MAGIC     instance_dict={ "instance_key_1": "value", ...}
-# MAGIC )
-# MAGIC ```
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Vertex AI Rest API Instructions
-# MAGIC 
-# MAGIC Copied from the Vertex AI Model Registry deployed-version examples.
-# MAGIC 
-# MAGIC 1. Make sure you have the Google Cloud SDK  installed.
-# MAGIC 2. Run the following command to authenticate with your Google account: 
-# MAGIC ```
-# MAGIC gcloud auth application-default login
-# MAGIC ```
-# MAGIC 3. Create a JSON object to hold your data.
-# MAGIC ```
-# MAGIC {
-# MAGIC   "instances": [
-# MAGIC     { "instance_key_1": "value", ... }, ...
-# MAGIC   ],
-# MAGIC   "parameters": { "parameter_key_1": "value", ... }, ...
-# MAGIC }
-# MAGIC ```
-# MAGIC 4. Create environment variables to hold your endpoint and project IDs, as well as your JSON object.
-# MAGIC ```
-# MAGIC ENDPOINT_ID="6798082482446008320"
-# MAGIC PROJECT_ID="fe-dev-sandbox"
-# MAGIC INPUT_DATA_FILE="INPUT-JSON"
-# MAGIC ```
-# MAGIC 5. Execute the request.
-# MAGIC ```
-# MAGIC curl \
-# MAGIC -X POST \
-# MAGIC -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-# MAGIC -H "Content-Type: application/json" \
-# MAGIC https://us-central1-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/us-central1/endpoints/${ENDPOINT_ID}:predict \
-# MAGIC -d "@${INPUT_DATA_FILE}"
-# MAGIC ```
