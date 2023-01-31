@@ -87,3 +87,49 @@ df_test.write.format("delta").saveAsTable("default.cc_fraud_test")
 
 # MAGIC %sql
 # MAGIC select * from cc_fraud_test limit 10;
+
+# COMMAND ----------
+
+df_test.head()
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC **Big Query Preparation**
+# MAGIC + Create a bucket for buffering BQ writes.  Same region as BQ and the DBX cluster.  
+# MAGIC + Set up the IAM permissions:   
+# MAGIC   o BigQuery Read Session User  
+# MAGIC   o BigQuery Data Editor  
+# MAGIC   o BigQuery Job User  
+# MAGIC     
+# MAGIC (added these to the Service Account assigned to the cluster)
+
+# COMMAND ----------
+
+# DBTITLE 1,Write Out to Big Query cc_fraud_bq Table
+# MAGIC %python
+# MAGIC 
+# MAGIC # table ref is project.dataset.table
+# MAGIC table = "fe-dev-sandbox.hsbc.cc_fraud_bq"
+# MAGIC 
+# MAGIC # temporary bucket for "buffering" writes to BQ
+# MAGIC bucket = "bq-temp-bucket-delta"
+# MAGIC 
+# MAGIC # write out df_test (doesn't have a label col) to BQ.
+# MAGIC df_test.write  \
+# MAGIC   .format("bigquery")  \
+# MAGIC   .option("temporaryGcsBucket", bucket)  \
+# MAGIC   .option("table", table)  \
+# MAGIC   .mode("overwrite").save()
+
+# COMMAND ----------
+
+
+# test read
+df_read = spark.read.format("bigquery").option("table",table).load()
+df.createOrReplaceTempView("bq_fraud")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from bq_fraud limit 10;
