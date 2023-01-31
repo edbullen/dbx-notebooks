@@ -2,9 +2,9 @@
 # MAGIC %md
 # MAGIC # Predictions using ML Models managed by MLflow
 # MAGIC Example scenarios demonstrated
-# MAGIC 1. Get predictions using the MLflow Rest API (demonstrated in the previous "build" notebook)
-# MAGIC 2. Apply an ML model in Databricks against data queried from BigQuery using SQL - "batch scoring"
-# MAGIC 3. Save results to GCP BigTable (HBase equivalent data-store)
+# MAGIC 1. Get predictions using the **MLflow Rest API** (demonstrated in the previous "build" notebook)
+# MAGIC 2. Apply a **Databricks MLflow model** using **SQL** against data queried from **BigQuery** - "batch scoring"
+# MAGIC 3. Save results to **GCP BigTable** (HBase equivalent data-store)
 # MAGIC 
 # MAGIC *Many other options and approaches are possible*
 # MAGIC 
@@ -59,13 +59,13 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 
 # COMMAND ----------
 
-# DBTITLE 1,Table Staged in BigQuery
+# DBTITLE 1,BigQuery Table of Demo Data to run Predictions against
 # table ref is project.dataset.table
 table = "fe-dev-sandbox.hsbc.cc_fraud_bq"
 
 # COMMAND ----------
 
-# DBTITLE 1,Data Stored in BigQuery for running predictions against
+# DBTITLE 1,Sample Data Stored in BigQuery 
 # load a sample of BigQuery Data
 df_bq = spark.read.format("bigquery").option("table",table).load()
 df_bq = df_bq.where(df_bq.id <= 5)
@@ -132,6 +132,14 @@ df_bq.createOrReplaceTempView("bq_fraud")
 
 # COMMAND ----------
 
+# DBTITLE 1,Sample  Query of the Predictions from BQ table
+# MAGIC %sql
+# MAGIC SELECT `id`, `time`, `amountRange`, `label`
+# MAGIC FROM cc_fraud_valid
+# MAGIC LIMIT 10;
+
+# COMMAND ----------
+
 # DBTITLE 1,Sample Query of the Validation table, with "true" fraud labels
 # MAGIC %sql
 # MAGIC SELECT `id`, `time`, `amountRange`, `label` 
@@ -142,13 +150,14 @@ df_bq.createOrReplaceTempView("bq_fraud")
 
 # DBTITLE 1,Join the Predictions made against the BQ data with the Validation data and check the accuracy
 # MAGIC %sql
-# MAGIC SELECT p.id, p.prediction, p.time, p.amountRange, v.label
+# MAGIC SELECT p.id, p.time, p.amountRange, p.prediction, v.label
 # MAGIC FROM cc_fraud_predictions p
 # MAGIC JOIN cc_fraud_valid v ON p.id = v.id
 # MAGIC WHERE prediction != v.label;
 
 # COMMAND ----------
 
+# DBTITLE 1,Count the False Positives
 # MAGIC %sql
 # MAGIC SELECT count(p.id) as False_Postive_Count
 # MAGIC FROM cc_fraud_predictions p
@@ -166,8 +175,15 @@ df_bq.createOrReplaceTempView("bq_fraud")
 
 # COMMAND ----------
 
+# DBTITLE 1,Many Options for sourcing data and making model predictions available
 # MAGIC %md
-# MAGIC ## 4. Google BigTable Results Persist
+# MAGIC 
+# MAGIC <img src="https://github.com/edbullen/dbx-notebooks/blob/136a93861baa721d0c2d996f7a27c979c0a2d32b/mlflow_gcp/images/HSBC_DDS_options.png?raw=true" alt="drawing" width="800"/>
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Google BigTable
 # MAGIC 
 # MAGIC + Dependancy: need Python library `google-cloud-bigtable` installed (add it to the cluster configuration)  
 # MAGIC    
@@ -219,6 +235,10 @@ predictions_df = predictions_df.withColumn("prediction", predictions_df["predict
 
 # COMMAND ----------
 
+predictions_df.count()
+
+# COMMAND ----------
+
 predictions_df.show(5)
 
 # COMMAND ----------
@@ -231,7 +251,7 @@ timestamp = datetime.datetime.utcnow()
 
 feature_cols = ["time", "amountRange"]
 
-column_family_1 = "predict"
+column_family_1 = "cc_application"
 #column_family_2 = "features"
 
 predictions_pd_df = predictions_df.toPandas()
@@ -251,14 +271,10 @@ feature_cols=list(predictions_df.columns)[1:][:-1]
 #    #prefix = "pca"
 #    #num = str(i).zfill(3)
 #    feature_cols.append(f"{prefix}_{num}")
-
 print(feature_cols)   
     
-
 #list of lists - features
 feature_vals = predictions_pd_df[feature_cols].to_numpy().tolist()
-
-
 
 # break this up into sets of batch-size
 batch_size = 10000
@@ -281,10 +297,10 @@ for i, r in enumerate(row_ids):
         hbase_row_ids[counter].set_cell(column_family_1, f, f"{feature_vals[i][j]}", timestamp)  
        
     # use BigTable mutate rows to write a batch out    
-    if counter >= batch_size:
+    if counter >= batch_size-1:
         response = table.mutate_rows(hbase_row_ids)
         hbase_row_ids = []
-        print(f"Wrote {counter} rows")
+        print(f"Wrote {counter+1} rows")
         counter = 0
         
         for n,status in enumerate(response):
@@ -302,8 +318,12 @@ for n,status in enumerate(response):
     if status.code != 0:
         print("Error writing row: {}".format(status.message))
         
-print(f"total records written {i}")    
+print(f"total records written {i+1}")    
 
+
+# COMMAND ----------
+
+predictions_df.where(predictions_df.prediction==1).take(5)
 
 # COMMAND ----------
 
@@ -316,7 +336,7 @@ print(f"total records written {i}")
 # MAGIC cbt -instance=fieldeng-bigtable-demo-central count cc_fraud_bigtable
 # MAGIC ```
 # MAGIC 
-# MAGIC Get a row id=3   *(id = 7120 is a Fraud example)*
+# MAGIC Get a row id=3  
 # MAGIC ```
 # MAGIC cbt -instance=fieldeng-bigtable-demo-central lookup cc_fraud_bigtable 3
 # MAGIC ```
