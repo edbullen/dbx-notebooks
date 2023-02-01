@@ -2,3 +2,4 @@
 .idea
 .python-version
 mlflow_gcp/utils/__pycache__/
+.databricks/
