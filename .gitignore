@@ -3,3 +3,4 @@
 .python-version
 mlflow_gcp/utils/__pycache__/
 .databricks/
+__pycache__
