@@ -1,5 +1,7 @@
 .DS_Store
 .idea
+.vscode
+.env
 .python-version
 mlflow_gcp/utils/__pycache__/
 .databricks/

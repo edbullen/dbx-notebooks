@@ -12,7 +12,7 @@ MLFLOW_URL = 'https://7177936340822399.9.gcp.databricks.com/model/cc_fraud_demo/
 
 def get_token():
     """ Set the Databricks PAT token as a local environment variable"""
-    return os.environ.get("DATABRICKS_TOKEN_CC_FRAUD")
+    return os.environ.get("DATABRICKS_TOKEN")
 
 
 def score_model(api_url, token, dataset: pd.DataFrame):
