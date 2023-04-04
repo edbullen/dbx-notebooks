@@ -19,7 +19,9 @@
 # MAGIC ## ML-Ops
 # MAGIC .  
 # MAGIC    
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1snUQ1VE0pV5rxlbjpH1257hYCAwdqZVU" alt="drawing" width="600"/>
+# MAGIC 
+# MAGIC <img width="600" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/mlops_operations.png"/>
+# MAGIC 
 # MAGIC 
 # MAGIC ## Demo Structure
 # MAGIC 
@@ -29,8 +31,8 @@
 # MAGIC   b) multiple training runs tracked in MLflow ("experiments")    
 # MAGIC   c) store artefacts with each model version for explainablility and governance.     
 # MAGIC 2. **Run**: Test using the model via different interfaces (notebook 2)  
-# MAGIC   a) Batch-score results via Databricks SQL with a UDF  
-# MAGIC   b) Get predictions from the Databricks MLflow Rest API  
+# MAGIC   a) Get predictions from the Databricks MLflow Rest API
+# MAGIC   b) Batch-score results via Databricks SQL with a UDF  
 # MAGIC   c) Batch Score and write results to a Delta table.  
 # MAGIC 
 # MAGIC The model is built as a Scikit-learn Random Forest model, managed in the MLflow framework and deployed in Databricks so that it is integrated into the Lakehouse environment.  
@@ -123,7 +125,7 @@ sample_df = ps.concat([sample_mixed_df, sample_fraud_df])
 
 # convert this sample to real Pandas to work with some visualisation libraries 
 pandas_df = sample_df.to_pandas()
-sns.set(font_scale=2.0)
+sns.set(font_scale=1.5)
 sns.pairplot( pandas_df
              , vars=pandas_df.iloc[:,1:9]
              , hue="label"
@@ -140,11 +142,11 @@ sns.pairplot( pandas_df
 # MAGIC + Randomly Split the Features and Labels into Training Data and Test Data for testing the models performance. 
 # MAGIC + Train the data on the training data-set and check the performance with the test set. 
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1Ed7UPfc8i9AE_uERKPcMT9015QkMe60q" alt="drawing" width="800"/>
+# MAGIC <img src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/train_test_split-procedure.jpg" width="800"/>
 
 # COMMAND ----------
 
-sqlContext.setConf("spark.sql.shuffle.partitions", "8")
+#sqlContext.setConf("spark.sql.shuffle.partitions", "8")
 
 # COMMAND ----------
 
@@ -200,7 +202,7 @@ print(type(y_train))
 # MAGIC #### Supervised Learning process
 # MAGIC Labeled data is needed to train a model to generate label predictions.  
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1--qOV9nfiesXB_EwQKdToLqIIRyCm8bQ" alt="drawing" width="600"/>
+# MAGIC <img src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/supervised-classification.png" alt="drawing" width="600"/>
 # MAGIC 
 # MAGIC 
 # MAGIC ### Random Forest Classification Algorithm
@@ -214,10 +216,6 @@ print(type(y_train))
 # MAGIC + Scikit-learn  
 # MAGIC + XGBoost  
 # MAGIC + Spacy
-# MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-9gDhtXQQXizghiQZz7K38lC3VVg0WUs" alt="drawing" width="550"/>
-# MAGIC 
-# MAGIC Final result determined by majority vote or average.
 
 # COMMAND ----------
 
@@ -451,10 +449,10 @@ print("model version "+model_registered.version+" as been registered as producti
 # MAGIC ## Deploy Model to MLflow Rest API
 # MAGIC The MLflow model serving API allows predictions to be scored via a secured API.  This makes the model easy to integrate with any code or software that can make a REST API call.
 # MAGIC 
-# MAGIC The new Serverless MLFlow Serving API takes about 5 minutes to deploy. 
+# MAGIC The new Serverless MLFlow Serving API takes less than 5 minutes to deploy.  
 # MAGIC .  
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7CsjhK0cFj96yErtCd2VWIJf0ypNHHJ" alt="drawing" width="1200"/>
+# MAGIC <img width="1200" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/cc_fraud_api_screenshot1.png"/>
 
 # COMMAND ----------
 
@@ -485,65 +483,8 @@ print("model version "+model_registered.version+" as been registered as producti
 
 # COMMAND ----------
 
-# MAGIC %sh mlflow --version
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC **Model Namespace**
-# MAGIC ```
-# MAGIC                       stage or version
-# MAGIC          model name     |
-# MAGIC             |           |
-# MAGIC "models:/cc_fraud/Production"
-# MAGIC ```
-
-# COMMAND ----------
-
-# Model URI is the location of the model in MLFLow
-model_uri="models:/cc_fraud/Production"
-
-# COMMAND ----------
-
 
 
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Appendix - Formatting test data
-# MAGIC Generate inline data from original data-source
-
-# COMMAND ----------
-
-import pandas as pd
-
-# Take a sample of test data
-X_test_small = X_test.head(5)
-print(round(X_test_small.memory_usage(index=True, deep=True).sum()/1024), "KB")
-
-# COMMAND ----------
-
-# X_test_small_2 has true fraud values
-mask = y==1
-X_test_small_2=X_test[mask].head(5)
-X_test_small = X_test_small.append(X_test_small_2)
-
-# COMMAND ----------
-
-import re
-dynamic_text = []
-for i in range(0,28):
-  col = X_test_small[f'pca[{i}]'].to_string(index=False)
-  flat_col = re.sub("\n", ", ", col)
-  dynamic_text.append(flat_col + ',')
-
-# COMMAND ----------
-
-print("data_dict = {")
-for i,t in enumerate(dynamic_text):
-  print(f'\'pca[{i}]\': [', t, ']', ',' )
-print("}")  

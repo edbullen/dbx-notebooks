@@ -9,7 +9,8 @@
 # MAGIC *Many other options and approaches are possible* 
 # MAGIC - EG streaming data as it arrives against the model and streaming the predictions out to a results table.
 # MAGIC 
-# MAGIC <img src="https://drive.google.com/uc?export=view&id=1gdajj0xkl5Y2-fKaIyVOfthbKYZwyf7O" alt="drawing" width="600"/>
+# MAGIC 
+# MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/model_serving_modes.png"/>
 
 # COMMAND ----------
 
@@ -63,7 +64,11 @@ print(f"current_user is {current_user}")
 # MAGIC 
 # MAGIC ```
 # MAGIC 
-# MAGIC Sample code is provided in this repo - see `./mlflow_cc_fraud/mlflow_rest_call.py`
+# MAGIC Sample code is provided in this repo - see `./mlflow_cc_fraud/mlflow_rest_call.py`  
+# MAGIC .   
+# MAGIC    
+# MAGIC 
+# MAGIC <img width="1200" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/cc_fraud_api_screenshot2.png"/>
 
 # COMMAND ----------
 
@@ -73,7 +78,7 @@ print(f"current_user is {current_user}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Load the model and create a UDF function on it - 5 mins
+# DBTITLE 1,Load the model and create a UDF function on it - 2 mins
 import mlflow
 
 # create a user-defined function that maps to MLflow model
@@ -100,12 +105,10 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## 3. Batch Write Predictions to Gold Table
+# MAGIC 
+# MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/medallion_architecture.png"/>
 
 # COMMAND ----------
 
