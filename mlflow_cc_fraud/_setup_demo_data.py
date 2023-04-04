@@ -180,3 +180,17 @@ df_flattened.write.mode("overwrite").saveAsTable("${var.catalog_name}.${var.db_n
 
 # MAGIC %sql
 # MAGIC SELECT * FROM ${var.catalog_name}.${var.db_name}.cc_fraud_silver LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Create Gold Table with Predictions
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TABLE ${var.catalog_name}.${var.db_name}.cc_fraud_gold
+# MAGIC (id bigint ,
+# MAGIC  time          int,
+# MAGIC  amountRange	int,
+# MAGIC  prediction int)
