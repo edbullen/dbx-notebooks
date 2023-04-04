@@ -73,6 +73,10 @@ display(dbutils.fs.ls('/databricks-datasets//credit-card-fraud/data'))
 
 # COMMAND ----------
 
+# MAGIC %pip install databricks-feature-store
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC ## Load the Data and Explore
 # MAGIC Load into Pyspark.  Use the [Spark Pandas library](https://spark.apache.org/docs/latest/api/python/user_guide/pandas_on_spark/index.html) to use Pandas API syntax but with data and processing distributed in a cluster.
@@ -86,8 +90,10 @@ df = spark.read.format('parquet').options(header=True,inferSchema=True).load(pat
 # COMMAND ----------
 
 # DBTITLE 1,Load into a Spark Pandas dataframe 
+
 from pyspark.ml.functions import vector_to_array
 from pyspark.sql.functions import col
+import databricks.feature_store
 
 from databricks.feature_store import feature_table
 # Convert to a dataframe compatible with the pandas API
@@ -443,7 +449,9 @@ print("model version "+model_registered.version+" as been registered as producti
 
 # MAGIC %md
 # MAGIC ## Deploy Model to MLflow Rest API
-# MAGIC The MLflow model serving API allows predictions to be "scored" via a secured API.  This makes the model easy to integrate with any code or software that can make a REST API call.
+# MAGIC The MLflow model serving API allows predictions to be scored via a secured API.  This makes the model easy to integrate with any code or software that can make a REST API call.
+# MAGIC 
+# MAGIC The new Serverless MLFlow Serving API takes about 5 minutes to deploy. 
 # MAGIC .  
 # MAGIC 
 # MAGIC <img src="https://drive.google.com/uc?export=view&id=1-7CsjhK0cFj96yErtCd2VWIJf0ypNHHJ" alt="drawing" width="1200"/>
