@@ -1,5 +1,5 @@
 numpy
 pandas
 pyspark
-mlflow==1.26.1
+mlflow
 pytest
