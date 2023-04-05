@@ -78,7 +78,7 @@ print(f"current_user is {current_user}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Load the model and create a UDF function on it - 2 mins
+# DBTITLE 1,Load the model and create a UDF function on it - 2 min deploy time
 import mlflow
 
 # create a user-defined function that maps to MLflow model
@@ -98,10 +98,27 @@ spark.udf.register("cc_fraud_model", fraud_detect_udf)
 # MAGIC               `pca19`, `pca20`, `pca21`, `pca22`, `pca23`, `pca24`,
 # MAGIC               `pca25`, `pca26`, `pca27`) 
 # MAGIC        as prediction
-# MAGIC --FROM eb_catalog.ed_bullen.cc_fraud_silver
 # MAGIC FROM ${var.catalog_name}.${var.db_name}.cc_fraud_silver
 # MAGIC WHERE id > 33 AND id < 100
 # MAGIC LIMIT 10;
+
+# COMMAND ----------
+
+# DBTITLE 1,PySpark Predictions Example
+import mlflow
+from pyspark.sql.functions import struct, col
+
+model_uri = 'models:/cc_fraud/Production'
+
+df = spark.sql("""select * from ${var.catalog_name}.${var.db_name}.cc_fraud_bronze""")
+
+loaded_model = mlflow.pyfunc.spark_udf(spark, model_uri=model_uri, result_type='double', env_manager="virtualenv")
+
+predictions_df = df.withColumn('predictions', loaded_model(struct(*map(col, df.columns))))
+
+# COMMAND ----------
+
+display(predictions_df.head(5))
 
 # COMMAND ----------
 
