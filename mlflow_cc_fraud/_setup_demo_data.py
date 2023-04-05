@@ -194,3 +194,43 @@ df_flattened.write.mode("overwrite").saveAsTable("${var.catalog_name}.${var.db_n
 # MAGIC  time          int,
 # MAGIC  amountRange	int,
 # MAGIC  prediction int)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Cleardown
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1. Either Drop or Delete from Gold Table
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DELETE FROM ${var.catalog_name}.${var.db_name}.cc_fraud_gold
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ## 2. Drop Silver Table
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Drop Bronze Table
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Delete Model
+# MAGIC 
+# MAGIC 1. Set from Production to None
+# MAGIC 2. Delete the Model Version(s)
+# MAGIC 3. Delete the Model
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC ## 5. Delete the Experiment

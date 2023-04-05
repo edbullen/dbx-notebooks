@@ -163,7 +163,10 @@ display(predictions_df.head(5))
 
 # COMMAND ----------
 
-
+# MAGIC %md
+# MAGIC # Summary - Full ML Model Lifecyle; MLOps with MLFlow
+# MAGIC 
+# MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/mlflow_lifecycle_summary.png"/>
 
 # COMMAND ----------
 
