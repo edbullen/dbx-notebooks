@@ -5,11 +5,11 @@
 # MAGIC 1. Get predictions using the **MLflow Rest API** 
 # MAGIC 2. Apply a **Databricks MLflow model** using **SQL** against data queried from **BigQuery** - "batch scoring"
 # MAGIC 3. Save results to **Delta Table**  - batch results available for downstream analytics
-# MAGIC 
+# MAGIC
 # MAGIC *Many other options and approaches are possible* 
 # MAGIC - EG streaming data as it arrives against the model and streaming the predictions out to a results table.
-# MAGIC 
-# MAGIC 
+# MAGIC
+# MAGIC
 # MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/model_serving_modes.png"/>
 
 # COMMAND ----------
@@ -40,20 +40,20 @@ print(f"current_user is {current_user}")
 
 # MAGIC %md
 # MAGIC ## 1. MLflow Rest API Predictions
-# MAGIC 
+# MAGIC
 # MAGIC Format the dataset to be scored in a Pandas Dataframe:
-# MAGIC 
+# MAGIC
 # MAGIC ```
 # MAGIC payload_df = pd.DataFrame([[1.226073, -1.640026, ... , 0.012658],
 # MAGIC                           ],
 # MAGIC                           columns=["pca[0]", "pca[1]", ... "pca[27]"])
 # MAGIC ```                          
-# MAGIC 
+# MAGIC
 # MAGIC Create a `score_model()` function and call it providing the MLflow URL, access-token and data to process:
 # MAGIC ```
 # MAGIC def score_model(api_url, token, dataset):
 # MAGIC     headers = {'Authorization': f'Bearer {token}'}
-# MAGIC 
+# MAGIC
 # MAGIC     data_core = dataset.to_dict(orient='records')
 # MAGIC     data_json = {"dataframe_records": data_core}
 # MAGIC     
@@ -61,13 +61,13 @@ print(f"current_user is {current_user}")
 # MAGIC     if response.status_code != 200:
 # MAGIC         raise Exception(f'Request failed with status {response.status_code}, {response.text}')
 # MAGIC     return response.json()
-# MAGIC 
+# MAGIC
 # MAGIC ```
-# MAGIC 
+# MAGIC
 # MAGIC Sample code is provided in this repo - see `./mlflow_cc_fraud/mlflow_rest_call.py`  
 # MAGIC .   
 # MAGIC    
-# MAGIC 
+# MAGIC
 # MAGIC <img width="1200" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/cc_fraud_api_screenshot2.png"/>
 
 # COMMAND ----------
@@ -75,6 +75,15 @@ print(f"current_user is {current_user}")
 # MAGIC %md 
 # MAGIC ## 2. SQL Batch Score with a PySpark UDF
 # MAGIC "UDF" is a User Defined Function.
+# MAGIC
+# MAGIC Goal: Run the Fraud Model against Silver data and store predictions in Gold for analysis / down-stream processes
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/medallion_architecture.png"/>
 
 # COMMAND ----------
 
@@ -124,7 +133,7 @@ display(predictions_df.head(5))
 
 # MAGIC %md
 # MAGIC ## 3. Batch Write Predictions to Gold Table
-# MAGIC 
+# MAGIC
 # MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/medallion_architecture.png"/>
 
 # COMMAND ----------
@@ -165,7 +174,7 @@ display(predictions_df.head(5))
 
 # MAGIC %md
 # MAGIC # Summary - Full ML Model Lifecyle; MLOps with MLFlow
-# MAGIC 
+# MAGIC
 # MAGIC <img width="800" src="https://github.com/edbullen/dbx-notebooks/raw/main/mlflow_cc_fraud/images/mlflow_lifecycle_summary.png"/>
 
 # COMMAND ----------

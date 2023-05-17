@@ -1,11 +1,11 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Demo Prep
-# MAGIC 
+# MAGIC
 # MAGIC Setup a sample Delta table for running test predictions against.  
-# MAGIC 
+# MAGIC
 # MAGIC This is based on the Databricks sample data-sets:
-# MAGIC 
+# MAGIC
 # MAGIC ```
 # MAGIC /databricks-datasets/credit-card-fraud/data
 # MAGIC ```
@@ -81,6 +81,8 @@ df = spark.read.format('parquet').options(header=True,inferSchema=True).load(pat
 # COMMAND ----------
 
 # Extract the vector of PCA features into individual columns, Convert to a dataframe compatible with the pandas API
+from pyspark.ml.functions import vector_to_array
+from pyspark.sql.functions import col
 df_flattened = (df.withColumn("pca", vector_to_array("pcaVector"))).select(["time", "amountRange", "label"] + [col("pca")[i] for i in range(28)])
 
 # COMMAND ----------
@@ -224,7 +226,7 @@ df_flattened.write.mode("overwrite").saveAsTable("${var.catalog_name}.${var.db_n
 
 # MAGIC %md
 # MAGIC ## 4. Delete Model
-# MAGIC 
+# MAGIC
 # MAGIC 1. Set from Production to None
 # MAGIC 2. Delete the Model Version(s)
 # MAGIC 3. Delete the Model
@@ -232,5 +234,5 @@ df_flattened.write.mode("overwrite").saveAsTable("${var.catalog_name}.${var.db_n
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC 
+# MAGIC
 # MAGIC ## 5. Delete the Experiment
