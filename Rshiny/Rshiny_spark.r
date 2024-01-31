@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC ## Simple Shiny Example with Databricks Spark
-# MAGIC 
+# MAGIC
 # MAGIC ref: https://docs.databricks.com/sparkr/shiny.html#how-can-i-save-the-shiny-applications-that-i-developed-on-hosted-rstudio-server
 
 # COMMAND ----------
@@ -57,4 +57,4 @@ head(diamonds_tbl)
 
 # COMMAND ----------
 
-
+# test commit
