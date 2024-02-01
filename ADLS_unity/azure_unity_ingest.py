@@ -5,14 +5,19 @@
 # MAGIC
 # MAGIC <img src="https://oneenvstorage.blob.core.windows.net/images/adlslogo.png" width="400">
 # MAGIC
+# MAGIC Example built on following:
+# MAGIC
 # MAGIC | Specs                |                                   |
 # MAGIC |----------------------|-----------------------------------|
 # MAGIC | Azure Resource Group | oneenv                            |
 # MAGIC | ADLS Account         | oneenvadls                        |
-# MAGIC | Containers           | deltalake, files                  |
+# MAGIC | App. Name            | oneenv-adls
+# MAGIC | Storage Container    | deltalake                         |
 # MAGIC | Region               | US West                           | 
 # MAGIC
 # MAGIC <br />
+# MAGIC
+# MAGIC Options:
 # MAGIC
 # MAGIC 1. Use SAS Key
 # MAGIC 2. Use the Azure Key Vault backed secrets scope
@@ -72,13 +77,14 @@ spark.conf.set("fs.azure.account.oauth2.client.endpoint", "https://login.microso
 # MAGIC ### Unity Catalog Storage Credential
 # MAGIC Before Creating an External Location, a Unity Catalog Storage Credential needs to be set up.
 # MAGIC
-# MAGIC 1. In Azure, register an *Identity App* (see "App Registrations" in the console)
-# MAGIC <img src="" width="400">
+# MAGIC 1. *In Azure*, **register an Identity App** (see "App Registrations" in the console)
+# MAGIC <img src="https://raw.githubusercontent.com/edbullen/dbx-notebooks/main/ADLS_unity/Azure_Application_oneenv-adls.png" width="1200">
 # MAGIC
-# MAGIC https://drive.google.com/file/d/1D7eWjLnBVzYksKCW_InGh_jKasgGzx-J/view?usp=sharing
-# MAGIC https://drive.google.com/file/d/1D7eWjLnBVzYksKCW_InGh_jKasgGzx-J/view?usp=sharing
 # MAGIC
-# MAGIC 2. In Databricks Unity Catalog Data Explorer, Create an *External Data Storage Credential* that links to the App ID and stores a Key associated with the the registered Azure Indentity App. 
+# MAGIC
+# MAGIC 2. *In Databricks* Unity Catalog Data Explorer, **Create an External Data Storage Credential** that links to the App ID and stores a Key associated with the the registered Azure Indentity App. 
+# MAGIC <img src="https://raw.githubusercontent.com/edbullen/dbx-notebooks/main/ADLS_unity/Unity_Catalog_Storage_Credential.png" width="1200">
+# MAGIC
 
 # COMMAND ----------
 
@@ -90,6 +96,19 @@ spark.conf.set("fs.azure.account.oauth2.client.endpoint", "https://login.microso
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC ### Volumes vs External Locations
+# MAGIC
+# MAGIC You can only create external tables with storage account locations that do not overlap with volumes paths.
+# MAGIC
+# MAGIC Decide whether to process file-based or table-based.
+# MAGIC
+# MAGIC #### Volume Path construct
+# MAGIC Path: 
+# MAGIC `/Volumes/<mycatalog>/<myschema>/<myexternalvolume>`
+
+# COMMAND ----------
+
 # DBTITLE 1,Create a Unity Catalog External Volume - path is set up as UC External Location
 # MAGIC %sql
 # MAGIC CREATE EXTERNAL VOLUME users.ed_bullen.nyc_taxi
@@ -98,13 +117,21 @@ spark.conf.set("fs.azure.account.oauth2.client.endpoint", "https://login.microso
 
 # COMMAND ----------
 
+# DBTITLE 1,Drop the Volume
 # MAGIC %sql
-# MAGIC CREATE EXTERNAL TABLE users.ed_bullen.nyc_taxi LOCATION 'abfss://deltalake@oneenvadls.dfs.core.windows.net/delta/scott/nyc_taxi';
+# MAGIC DROP VOLUME users.ed_bullen.nyc_taxi;
+
+# COMMAND ----------
+
+# DBTITLE 1,Create External Table using External Location
+# MAGIC %sql
+# MAGIC CREATE EXTERNAL TABLE users.ed_bullen.nyc_taxi
+# MAGIC LOCATION 'abfss://deltalake@oneenvadls.dfs.core.windows.net/delta/scott/nyc_taxi';
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DESCRIBE DETAIL users.ed_bullen.wiki_articles;
+# MAGIC DESCRIBE DETAIL users.ed_bullen.nyc_taxi;
 
 # COMMAND ----------
 
